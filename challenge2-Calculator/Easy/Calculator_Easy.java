@@ -33,8 +33,8 @@ public class Calculator_Easy {
                     System.out.println("Error, can't divide by 0. Setting number to 1.0");
                     num2 = 1.0;
                 }
-                return num1 * num2;
-                
+                return num1 / num2;
+
             default:
                 return 1;
 
