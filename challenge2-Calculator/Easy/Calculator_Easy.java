@@ -15,7 +15,9 @@ public class Calculator_Easy {
         System.out.print("Enter your second number: ");
         double num2 = scnr.nextDouble();
 
-        System.out.println(calculate(num1, ch, num2));        
+        System.out.println(calculate(num1, ch, num2)); 
+        
+        scnr.close();
     }
 
     

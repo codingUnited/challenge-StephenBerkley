@@ -51,6 +51,8 @@ public class Calculator_Medium {
             // discovery!!!
             System.out.println(add_commas.format(num1) + " " + ch + " " + add_commas.format(num2) + " = "
                                 + add_commas.format(calculate(num1, ch, num2)));  
+
+            scnr.close();
         }      
     }
 
