@@ -38,7 +38,8 @@ istream& operator>>(istream& is, JSONParser& jp) {
         is.eof();
     else if (nextChar == comma) {
         char whatNext = is.peek();
-        if (whatNext == rightBracket || ('\"')) {     // format is wrong
+        if (whatNext == rightBracket || whatNext != ('\"')) {     // format is wrong
+            is.unget();
             is.clear(ios::failbit);
         }
         ; // getting ready for next "key":"value" for our map
@@ -69,7 +70,7 @@ void fillMap(istream& is, unordered_map<string, string>& m) {
 
 int main() {
     unordered_map<string, string> parserMap;
-    string test = "{\n \"key\":\"value\", \n}";
+    string test = "{\"key\":\"value\",\"key1\":value1\"}";
     istringstream iss(test);
     
     fillMap(iss, parserMap);
