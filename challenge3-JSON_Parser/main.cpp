@@ -13,13 +13,15 @@ struct JSONParser {
 istream& operator>>(istream& is, JSONParser& jp) {
     // "key": "value" } -or- "key": "value", ...} format      { checked before coming here
     string key, value;
-    char firstQuot, secondQuot, colon, rightBracket;
+    char firstQuot, secondQuot, colon, nextChar;
     
     is >> firstQuot;
+    if (firstQuot == '}')
+        return is;
     getline(is, key, '\"'); 
     is >> colon >> secondQuot;
     getline(is, value, '\"');
-    is >> rightBracket; 
+    is >> nextChar; 
 
     if(!is)
         return is;
@@ -29,12 +31,21 @@ istream& operator>>(istream& is, JSONParser& jp) {
         return is;
     }  
 
-    if (rightBracket == '}')
+    char rightBracket = '}';
+    char comma = ',';
+
+    if (nextChar == rightBracket)
         is.eof();
-    else if (rightBracket == ',')
-           ;    // do nothing
+    else if (nextChar == comma) {
+        char whatNext = is.peek();
+        if (whatNext == rightBracket || ('\"')) {     // format is wrong
+            is.clear(ios::failbit);
+        }
+        ; // getting ready for next "key":"value" for our map
+    }
+            
     else {
-        cerr << "Was expecting a ',' or '}', but found a " << rightBracket << '\n';
+        cerr << "Was expecting a ',' or '}', but found a " << nextChar << '\n';
         is.clear(ios::failbit);
         return is;
     }
@@ -58,7 +69,7 @@ void fillMap(istream& is, unordered_map<string, string>& m) {
 
 int main() {
     unordered_map<string, string> parserMap;
-    string test = "{ \"jdelim\": \"one\", \"ericab\", \"two\", \"stephen\": \"three\"}";
+    string test = "{\n \"key\":\"value\", \n}";
     istringstream iss(test);
     
     fillMap(iss, parserMap);
