@@ -1,87 +1,129 @@
 #include <iostream>
-#include <map>
+#include <string>
+#include <variant>
 #include <unordered_map>
 #include <sstream>
 
-using namespace std;
-
 struct JSONParser {
-    string key;         // only set up for map<string, string>
-    string value;
+    std::string key;
+    std::variant<std::string, int, double, bool> value;
 };
 
-istream& operator>>(istream& is, JSONParser& jp) {
-    // "key": "value" } -or- "key": "value", ...} format      { checked before coming here
-    string key, value;
-    char firstQuot, secondQuot, colon, nextChar;
-    
-    is >> firstQuot;
-    if (firstQuot == '}')
-        return is;
-    getline(is, key, '\"'); 
-    is >> colon >> secondQuot;
-    getline(is, value, '\"');
-    is >> nextChar; 
+std::istream& operator>>(std::istream& is, JSONParser& jp)
+{
+    std::string key;
+    std::variant<std::string, int, double, bool> value;
 
-    if(!is)
-        return is;
-    
-    if (firstQuot !='\"' || colon!=':' || secondQuot!='\"') { // catching wrong format 
-        is.clear(ios::failbit);
-        return is;
-    }  
+    char colon, ch;
 
-    char rightBracket = '}';
-    char comma = ',';
+    is >> ch;
+    if (ch == '}')
+    {
+        is.clear(std::ios::failbit);
+        return is;
+    }
 
-    if (nextChar == rightBracket)
-        is.eof();
-    else if (nextChar == comma) {
-        char whatNext = is.peek();
-        if (whatNext == rightBracket || whatNext != ('\"')) {     // format is wrong
-            is.unget();
-            is.clear(ios::failbit);
+    if (ch != '\"')
+    {
+        is.clear(std::ios::failbit);
+        return is;
+    }
+
+    std::getline(is, key, '\"');
+
+    is >> colon >> ch;
+
+    if (colon != ':')
+        is.clear(std::ios::failbit);
+
+    if (ch == '\"')
+    {
+        std::string strValue;
+        std::getline(is, strValue, '\"');
+        value = strValue;
+    }
+    else
+    {
+        // if not a string, make a token to check what type it is
+        std::string token;
+        token += ch;
+        while (is.get(ch)) {
+            if (ch == ',' || ch == '}')
+                break;
+
+            token += ch;
         }
-        ; // getting ready for next "key":"value" for our map
+
+        // try to parse into int, double, or bool
+        if (token == "true")
+            value = true;
+        else if (token == "false")
+            value = false;
+        else if (token.find('.') != std::string::npos)  // !!! npos and find() should be used in conjuction. what this is saying here is we found a '.'
+            value = std::stod(token);
+        else
+            value = std::stoi(token);
+
+
+        if (ch == '}')
+            is.unget(); // put '}' back
+
     }
-            
-    else {
-        cerr << "Was expecting a ',' or '}', but found a " << nextChar << '\n';
-        is.clear(ios::failbit);
-        return is;
+
+
+    if (is.peek() == ',')
+        is.get();
+
+    else if (is.peek() == '}')
+    {
+        ; // do nothing
     }
-        
+
     jp = JSONParser{key, value};
     return is;
 }
 
 
-void fillMap(istream& is, unordered_map<string, string>& m) {
+template <typename T>
+void fillMap(std::istream& is, std::unordered_map<std::string, T>& m) {
     char leftBracket = -1;
     if (is >> leftBracket && leftBracket!='{') { // before inputting, checking if first character is a {
-        cerr << "was expecting a {" << '\n';
         is.unget();
-        is.clear(ios::failbit);
+        is.clear(std::ios::failbit);
     }
 
     for (JSONParser jp; is >> jp;)
         m[jp.key] = jp.value;
+
 }
 
 int main() {
-    unordered_map<string, string> parserMap;
-    string test = "{\"key\":\"value\",\"key1\":value1\"}";
-    istringstream iss(test);
-    
-    fillMap(iss, parserMap);
-    
-    for (const auto& elem : parserMap) {
-        cout << elem.first << ": " << elem.second << '\n';
-    }
 
-    if (parserMap.empty()) {
-        cerr << "Map was not populated" << '\n';
-    }
+    std::unordered_map<std::string, std::variant<std::string, int, double, bool>> parserMap;
+    std::string test = "{\"key1\":true, \"key2\":false, \"key4\":\"value\",\"key5\":101 }";
+    std::istringstream iss(test);
+    try{
+        fillMap(iss, parserMap);
 
-    return 0;
+        auto printValue = [](const auto& v)
+        {
+            std::cout << v;
+        };    // needed for std::visit
+
+        for (const auto& elem : parserMap) {
+            std::cout << elem.first << ": ";
+            std::visit(printValue, elem.second); // std::visit is the way to print std::variant
+            std::cout << '\n';
+        }
+
+        if (parserMap.empty()) {
+            std::cerr << "Map was not populated" << '\n';
+        }
+
+        return 0;
+    }
+    catch (std::exception e) {
+        std::cout << e.what();
+        return 1;
+    }
 }
